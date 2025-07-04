@@ -55,9 +55,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 10px;
-  background-color: #4a4a4a;
-  border-bottom: 1px solid #444;
+  padding: 10px;
+  border-bottom: 1px solid #333;
 }
 
 h2 {
@@ -109,36 +108,49 @@ h2 {
 
 .list-item {
   display: flex;
-  flex-direction: column;
-  padding: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #333;
   cursor: pointer;
-  border-radius: 4px;
-  overflow: hidden;
+  transition: background-color 0.2s;
 }
 
 .list-item:hover {
-  background-color: #5a5a5a;
+  background-color: #3a3a3a;
 }
 
 .list-item.selected {
-  background-color: #007aff;
+  background-color: #007bff;
   color: white;
+}
+
+.file-checkbox {
+  margin-right: 12px;
+  cursor: pointer;
+}
+
+.file-info {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
 }
 
 .file-name {
   font-weight: bold;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 1em;
 }
 
 .dir-path {
-  font-size: 11px;
-  color: #ccc;
-  margin-top: 3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 0.8em;
+  color: #aaa;
+}
+
+.list-item.selected .dir-path {
+  color: #e0e0e0;
+}
+
+.version-list-container .list-item {
+  justify-content: space-between;
 }
 
 .preview-pane {
@@ -194,4 +206,18 @@ h2 {
 
 .filter-item input {
   cursor: pointer;
+}
+
+.select-all-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #333;
+}
+
+.select-all-container label {
+  cursor: pointer;
+  font-size: 0.9em;
+  user-select: none; /* Prevents text selection on double click */
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import JSZip from 'jszip';
 import './App.css';
 
 const API_URL = 'http://localhost:3001';
@@ -17,6 +18,8 @@ function App() {
   const [sortOrder, setSortOrder] = useState('name'); // 'name' or 'date'
   const [selectedExtensions, setSelectedExtensions] = useState({});
   const [selectedDirectory, setSelectedDirectory] = useState('');
+  const [selectedForZip, setSelectedForZip] = useState(new Set());
+  const [isZipping, setIsZipping] = useState(false);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -120,6 +123,70 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  const handleZipSelection = (path, isSelected) => {
+    setSelectedForZip(prev => {
+      const newSet = new Set(prev);
+      if (isSelected) {
+        newSet.add(path);
+      } else {
+        newSet.delete(path);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = (isChecked) => {
+    if (isChecked) {
+      setSelectedForZip(new Set(filteredAndSortedPaths));
+    } else {
+      setSelectedForZip(new Set());
+    }
+  };
+
+  const handleDownloadZip = async () => {
+    if (selectedForZip.size === 0) return;
+
+    setIsZipping(true);
+    const zip = new JSZip();
+
+    try {
+      const fetchPromises = Array.from(selectedForZip).map(async (path) => {
+        const latestVersion = history[path]?.[0];
+        if (latestVersion) {
+          const response = await fetch(`${API_URL}${latestVersion.contentUrl}`);
+          if (response.ok) {
+            const content = await response.text();
+            // Decode the path here to fix folder names in the zip file
+            const decodedPath = decodeURIComponent(path);
+            // Use the full path but remove the user's home directory prefix for a cleaner structure
+            const relativePath = decodedPath.replace(/^(?:C:\\Users\\[^\\]+|Users\/[^/]+)/, '');
+            zip.file(relativePath, content);
+          }
+        }
+      });
+
+      await Promise.all(fetchPromises);
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(zipBlob);
+      link.download = `cursor_history_export_${Date.now()}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+    } catch (e) {
+      console.error("Error creating zip file", e);
+      // You might want to show an error to the user here
+    } finally {
+      setIsZipping(false);
+    }
+  };
+
+  const allVisibleSelected = filteredAndSortedPaths.length > 0 && filteredAndSortedPaths.every(path => selectedForZip.has(path));
+
   return (
     <div className="App">
       <h1>Cursor History Explorer (React Edition)</h1>
@@ -161,26 +228,51 @@ function App() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <div className="select-all-container">
+            <input
+              type="checkbox"
+              id="select-all"
+              title="Select all visible files"
+              checked={allVisibleSelected}
+              onChange={(e) => handleSelectAll(e.target.checked)}
+            />
+            <label htmlFor="select-all">Select all visible files</label>
+          </div>
           <div className="list-box">
             {filteredAndSortedPaths.map(path => {
               const fileName = path.split('/').pop();
               const dirPath = path.substring(0, path.lastIndexOf('/'));
+              const isSelected = selectedForZip.has(path);
 
               return (
                 <div
                   key={path}
                   className={`list-item ${selectedFile === path ? 'selected' : ''}`}
-                  onClick={() => handleFileSelect(path)}
                   title={path}
                 >
-                  <div className="file-name">{fileName}</div>
-                  <div className="dir-path">{dirPath}</div>
+                  <input 
+                    type="checkbox" 
+                    className="file-checkbox"
+                    checked={isSelected}
+                    onChange={(e) => handleZipSelection(path, e.target.checked)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <div className="file-info" onClick={() => handleFileSelect(path)}>
+                    <div className="file-name">{fileName}</div>
+                    <div className="dir-path">{decodeURIComponent(dirPath)}</div>
+                  </div>
                 </div>
               );
             })}
           </div>
           <div className="pane-footer">
-            {filteredAndSortedPaths.length} files shown
+            <span>{filteredAndSortedPaths.length} files shown</span>
+            <button 
+              onClick={handleDownloadZip} 
+              disabled={isZipping || selectedForZip.size === 0}
+            >
+              {isZipping ? 'Zipping...' : `Download ${selectedForZip.size} Selected as .zip`}
+            </button>
           </div>
         </div>
 
