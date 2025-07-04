@@ -137,7 +137,7 @@ function App() {
               <select value={selectedDirectory} onChange={(e) => setSelectedDirectory(e.target.value)}>
                 <option value="">All Directories</option>
                 {uniqueDirectories.map(dir => (
-                  <option key={dir} value={dir}>{dir}</option>
+                  <option key={dir} value={dir}>{decodeURIComponent(dir)}</option>
                 ))}
               </select>
             </div>
