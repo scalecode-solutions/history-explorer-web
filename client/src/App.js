@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './App.css';
 
 const API_URL = 'http://localhost:3001';
@@ -20,6 +22,14 @@ function App() {
   const [selectedDirectory, setSelectedDirectory] = useState('');
   const [selectedForZip, setSelectedForZip] = useState(new Set());
   const [isZipping, setIsZipping] = useState(false);
+  const [fontSize, setFontSize] = useState('medium'); // 'small', 'medium', 'large'
+  const [copyStatus, setCopyStatus] = useState(''); // To show 'Copied!' message
+
+  const FONT_SIZES = {
+    small: '12px',
+    medium: '14px',
+    large: '16px',
+  };
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -57,6 +67,20 @@ function App() {
       setFileContent('Error loading file content.');
     } finally {
       setIsContentLoading(false);
+    }
+  };
+
+  const getFileLanguage = (filePath) => {
+    if (!filePath) return 'plaintext';
+    const extension = filePath.split('.').pop().toLowerCase();
+    switch (extension) {
+      case 'js': return 'javascript';
+      case 'ts': return 'typescript';
+      case 'css': return 'css';
+      case 'html': return 'html';
+      case 'json': return 'json';
+      case 'md': return 'markdown';
+      default: return 'plaintext';
     }
   };
 
@@ -121,6 +145,18 @@ function App() {
     
     // Clean up the URL object
     URL.revokeObjectURL(url);
+  };
+
+  const handleCopyContent = () => {
+    if (!fileContent) return;
+    navigator.clipboard.writeText(fileContent).then(() => {
+      setCopyStatus('Copied!');
+      setTimeout(() => setCopyStatus(''), 2000); // Reset after 2 seconds
+    }, (err) => {
+      setCopyStatus('Failed!');
+      console.error('Failed to copy content: ', err);
+      setTimeout(() => setCopyStatus(''), 2000);
+    });
   };
 
   const handleZipSelection = (path, isSelected) => {
@@ -189,124 +225,143 @@ function App() {
 
   return (
     <div className="App">
-      <h1>Cursor History Explorer (React Edition)</h1>
       <div className="container">
-        <div className="pane file-list-container">
-          <div className="header-bar">
-            <h2>Files</h2>
-            <div className="sort-options">
-              <button onClick={() => setSortOrder('name')} className={sortOrder === 'name' ? 'active' : ''}>By Name</button>
-              <button onClick={() => setSortOrder('date')} className={sortOrder === 'date' ? 'active' : ''}>By Date</button>
-            </div>
-          </div>
-          <div className="filter-box">
-            <div className="directory-filter">
-              <select value={selectedDirectory} onChange={(e) => setSelectedDirectory(e.target.value)}>
-                <option value="">All Directories</option>
-                {uniqueDirectories.map(dir => (
-                  <option key={dir} value={dir}>{decodeURIComponent(dir)}</option>
-                ))}
-              </select>
-            </div>
-            {FILTERABLE_EXTENSIONS.map(ext => (
-              <div key={ext} className="filter-item">
-                <input
-                  type="checkbox"
-                  id={`ext-${ext}`}
-                  checked={!!selectedExtensions[ext]}
-                  onChange={() => handleExtensionToggle(ext)}
-                />
-                <label htmlFor={`ext-${ext}`}>{ext.toUpperCase()}</label>
+        <div className="left-column">
+          <div className="pane file-list-container">
+            <div className="header-bar">
+              <h2>Files</h2>
+              <div className="sort-options">
+                <button onClick={() => setSortOrder('name')} className={sortOrder === 'name' ? 'active' : ''}>By Name</button>
+                <button onClick={() => setSortOrder('date')} className={sortOrder === 'date' ? 'active' : ''}>By Date</button>
               </div>
-            ))}
-          </div>
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="Search files..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="select-all-container">
-            <input
-              type="checkbox"
-              id="select-all"
-              title="Select all visible files"
-              checked={allVisibleSelected}
-              onChange={(e) => handleSelectAll(e.target.checked)}
-            />
-            <label htmlFor="select-all">Select all visible files</label>
-          </div>
-          <div className="list-box">
-            {filteredAndSortedPaths.map(path => {
-              const fileName = path.split('/').pop();
-              const dirPath = path.substring(0, path.lastIndexOf('/'));
-              const isSelected = selectedForZip.has(path);
-
-              return (
-                <div
-                  key={path}
-                  className={`list-item ${selectedFile === path ? 'selected' : ''}`}
-                  title={path}
-                >
-                  <input 
-                    type="checkbox" 
-                    className="file-checkbox"
-                    checked={isSelected}
-                    onChange={(e) => handleZipSelection(path, e.target.checked)}
-                    onClick={(e) => e.stopPropagation()}
+            </div>
+            <div className="filter-box">
+              <div className="directory-filter">
+                <select value={selectedDirectory} onChange={(e) => setSelectedDirectory(e.target.value)}>
+                  <option value="">All Directories</option>
+                  {uniqueDirectories.map(dir => (
+                    <option key={dir} value={dir}>{decodeURIComponent(dir)}</option>
+                  ))}
+                </select>
+              </div>
+              {FILTERABLE_EXTENSIONS.map(ext => (
+                <div key={ext} className="filter-item">
+                  <input
+                    type="checkbox"
+                    id={`ext-${ext}`}
+                    checked={!!selectedExtensions[ext]}
+                    onChange={() => handleExtensionToggle(ext)}
                   />
-                  <div className="file-info" onClick={() => handleFileSelect(path)}>
-                    <div className="file-name">{fileName}</div>
-                    <div className="dir-path">{decodeURIComponent(dirPath)}</div>
-                  </div>
+                  <label htmlFor={`ext-${ext}`}>{ext.toUpperCase()}</label>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+            <div className="search-box">
+              <input
+                type="text"
+                placeholder="Search files..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="select-all-container">
+              <input
+                type="checkbox"
+                id="select-all"
+                title="Select all visible files"
+                checked={allVisibleSelected}
+                onChange={(e) => handleSelectAll(e.target.checked)}
+              />
+              <label htmlFor="select-all">Select all visible files</label>
+            </div>
+            <div className="list-box">
+              {filteredAndSortedPaths.map(path => {
+                const fileName = path.split('/').pop();
+                const dirPath = path.substring(0, path.lastIndexOf('/'));
+                const isSelected = selectedForZip.has(path);
+
+                return (
+                  <div
+                    key={path}
+                    className={`list-item ${selectedFile === path ? 'selected' : ''}`}
+                    title={path}
+                  >
+                    <input 
+                      type="checkbox" 
+                      className="file-checkbox"
+                      checked={isSelected}
+                      onChange={(e) => handleZipSelection(path, e.target.checked)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <div className="file-info" onClick={() => handleFileSelect(path)}>
+                      <div className="file-name">{fileName}</div>
+                      <div className="dir-path">{decodeURIComponent(dirPath)}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="pane-footer">
+              <span>{filteredAndSortedPaths.length} files shown</span>
+              <button 
+                onClick={handleDownloadZip} 
+                disabled={isZipping || selectedForZip.size === 0}
+              >
+                {isZipping ? 'Zipping...' : `Download ${selectedForZip.size} Selected as .zip`}
+              </button>
+            </div>
           </div>
-          <div className="pane-footer">
-            <span>{filteredAndSortedPaths.length} files shown</span>
-            <button 
-              onClick={handleDownloadZip} 
-              disabled={isZipping || selectedForZip.size === 0}
-            >
-              {isZipping ? 'Zipping...' : `Download ${selectedForZip.size} Selected as .zip`}
-            </button>
+
+          <div className="pane version-list-container">
+            <h2>Versions</h2>
+            <div className="list-box">
+              {selectedFile ? (
+                history[selectedFile].map(version => (
+                  <div
+                    key={version.id}
+                    className={`list-item ${selectedVersion === version.id ? 'selected' : ''}`}
+                    onClick={() => handleVersionSelect(version)}
+                  >
+                    {new Date(version.timestamp).toLocaleString()}
+                  </div>
+                ))
+              ) : (
+                <p>Select a file</p>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="pane version-list-container">
-          <h2>Versions</h2>
-          <div className="list-box">
-            {selectedFile ? (
-              history[selectedFile].map(version => (
-                <div
-                  key={version.id}
-                  className={`list-item ${selectedVersion === version.id ? 'selected' : ''}`}
-                  onClick={() => handleVersionSelect(version)}
-                >
-                  {new Date(version.timestamp).toLocaleString()}
-                </div>
-              ))
+        <div className="pane content-pane">
+          <div className="content-header">
+            <h2>Content Preview</h2>
+            <div className="font-size-selector">
+              <button onClick={() => setFontSize('small')} className={fontSize === 'small' ? 'active' : ''}>Small</button>
+              <button onClick={() => setFontSize('medium')} className={fontSize === 'medium' ? 'active' : ''}>Medium</button>
+              <button onClick={() => setFontSize('large')} className={fontSize === 'large' ? 'active' : ''}>Large</button>
+            </div>
+            <div className="content-actions">
+              <button onClick={handleCopyContent} disabled={!fileContent}>
+                {copyStatus || 'Copy Content'}
+              </button>
+              {selectedVersion && <button onClick={handleSaveAs} className="save-as-button">Save As...</button>}
+            </div>
+          </div>
+          <div className="content-box">
+            {isContentLoading ? (
+              <div>Loading content...</div>
             ) : (
-              <p>Select a file</p>
+              <SyntaxHighlighter
+                language={getFileLanguage(selectedFile)}
+                style={oneDark}
+                showLineNumbers
+                wrapLines={true}
+                customStyle={{ margin: 0, height: '100%', width: '100%', fontSize: FONT_SIZES[fontSize] }}
+              >
+                {fileContent}
+              </SyntaxHighlighter>
             )}
           </div>
-        </div>
-
-        <div className="pane preview-pane-container">
-          <div className="header-bar">
-            <h2>Preview</h2>
-            <button onClick={handleSaveAs} disabled={!fileContent}>
-              Save As...
-            </button>
-          </div>
-          <pre className="preview-pane">
-            <code>
-              {isContentLoading ? 'Loading...' : fileContent}
-            </code>
-          </pre>
         </div>
       </div>
     </div>

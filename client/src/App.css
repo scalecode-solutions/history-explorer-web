@@ -17,7 +17,7 @@ body {
 }
 
 .App h1 {
-  margin: 15px 0;
+  margin: 0;
   flex-shrink: 0; /* Prevents the title from shrinking */
 }
 
@@ -37,14 +37,6 @@ body {
   overflow: hidden;
   background-color: #3c3c3c;
   text-align: left;
-}
-
-.file-list-container {
-  flex: 1;
-}
-
-.version-list-container {
-  flex: 1;
 }
 
 .preview-pane-container {
@@ -220,4 +212,94 @@ h2 {
   cursor: pointer;
   font-size: 0.9em;
   user-select: none; /* Prevents text selection on double click */
+}
+
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #333;
+}
+
+.font-size-selector button {
+  background: #3a3a3a;
+  border: 1px solid #555;
+  color: #eee;
+  padding: 4px 8px;
+  cursor: pointer;
+  margin: 0 2px;
+}
+
+.font-size-selector button:hover {
+  background: #4a4a4a;
+}
+
+.font-size-selector button.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.content-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.content-box pre {
+  margin: 0 !important;
+  height: 100%;
+  border-radius: 0 !important;
+}
+
+.content-pane {
+  flex-grow: 1;
+}
+
+.left-column {
+  display: flex;
+  flex-direction: column;
+  width: 35%;
+  min-width: 300px;
+  border-right: 1px solid #444;
+  resize: horizontal;
+  overflow: auto;
+}
+
+.file-list-container, .version-list-container {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
+.file-list-container {
+  height: 75%;
+  border-bottom: 1px solid #444;
+}
+
+.version-list-container {
+  height: 25%;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.content-pane {
+  flex-grow: 1;
+}
+
+.list-box {
+  flex-grow: 1;
+}
+
+.pane-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-top: 1px solid #444;
+  background-color: #3a3a3a;
 }
