@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+/node_modules
 /.pnp
 .pnp.js
 
@@ -40,6 +41,5 @@ yarn-error.log*
 ehthumbs.db
 Thumbs.db
 
-# Private development files
-development_plan.md
-FUTURE_FEATURES.md 
+# Documentation
+/docs 
