@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import JSZip from 'jszip';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -179,7 +179,7 @@ function App() {
     setDiffError(null); // Clear any old errors
   };
 
-  const handleVersionClick = async (path, version) => {
+  const handleVersionClick = useCallback(async (path, version) => {
     setIsDiffMode(false);
     setSelectedFile({ path, version });
     setIsContentLoading(true);
@@ -193,7 +193,7 @@ function App() {
     } finally {
       setIsContentLoading(false);
     }
-  };
+  }, [historyPath]);
 
   const handleDiffSelection = (version) => {
     setSelectedForDiff(prev => {
@@ -326,7 +326,7 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
-  const handleCopyContent = () => {
+  const handleCopyContent = useCallback(() => {
     if (!fileContent) return;
     navigator.clipboard.writeText(fileContent).then(() => {
       setCopyStatus('Copied!');
@@ -335,7 +335,7 @@ function App() {
       setCopyStatus('Failed!');
       setTimeout(() => setCopyStatus(''), 2000);
     });
-  };
+  }, [fileContent]);
 
   const handleSearch = async () => {
     if (!searchTerm) return;
@@ -358,14 +358,14 @@ function App() {
     setSearchResults(null);
   };
 
-  const handleZipSelection = (path, isSelected) => {
+  const handleZipSelection = useCallback((path, isSelected) => {
     setSelectedForZip(prev => {
       const newSelection = new Set(prev);
       if (isSelected) newSelection.add(path);
       else newSelection.delete(path);
       return newSelection;
     });
-  };
+  }, []);
 
   const handleSelectAll = (isChecked) => {
     if (isChecked) setSelectedForZip(new Set(filteredAndSortedPaths));
@@ -557,6 +557,105 @@ function App() {
       </div>
     );
   };
+
+  // Add keyboard shortcut handler
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't trigger shortcuts if user is typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // Search shortcuts
+      if (e.ctrlKey || e.metaKey) {  // Ctrl for Windows/Linux, Cmd for Mac
+        if (e.key === 'f') {
+          e.preventDefault();
+          document.querySelector('.super-search-container input').focus();
+        } else if (e.key === '/') {
+          // Change from Ctrl+D to Ctrl+/ for directory filter
+          e.preventDefault();
+          document.querySelector('.filter-container input').focus();
+        } else if (e.key === '.') {
+          // Change from Ctrl+E to Ctrl+. for extension filter
+          e.preventDefault();
+          document.querySelector('.extension-dropdown-container select').focus();
+        }
+      }
+
+      // Toggle checkbox with spacebar
+      if (e.key === ' ' && selectedPath) {
+        e.preventDefault(); // Prevent page scroll
+        handleZipSelection(selectedPath, !selectedForZip.has(selectedPath));
+      }
+
+      // Navigation shortcuts
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const listItems = document.querySelectorAll('.list-box .list-item');
+        const currentIndex = Array.from(listItems).findIndex(item => 
+          item.classList.contains('selected')
+        );
+
+        if (listItems.length > 0) {
+          let newIndex;
+          if (e.key === 'ArrowUp') {
+            newIndex = currentIndex > 0 ? currentIndex - 1 : listItems.length - 1;
+          } else {
+            newIndex = currentIndex < listItems.length - 1 ? currentIndex + 1 : 0;
+          }
+
+          if (e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            // Multi-select with Shift
+            const path = filteredAndSortedPaths[newIndex];
+            handleZipSelection(path, true);
+          }
+          
+          // Always update selection
+          const path = filteredAndSortedPaths[newIndex];
+          handleFileSelect(path);
+          
+          // Ensure the item is visible
+          listItems[newIndex].scrollIntoView({ block: 'nearest' });
+        }
+      }
+
+      // Action shortcuts
+      if (e.key === 'Enter' && selectedPath) {
+        // Open/preview the first version of selected file
+        const versions = history[selectedPath];
+        if (versions && versions.length > 0) {
+          handleVersionClick(selectedPath, versions[0]);
+        }
+      }
+
+      if (e.key === 'Escape') {
+        // Clear selections
+        setSelectedPath(null);
+        setSelectedFile(null);
+        setSelectedForZip(new Set());
+        setSelectedForDiff([]);
+        setIsDiffMode(false);
+      }
+
+      // Copy content shortcut
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && fileContent) {
+        e.preventDefault();
+        handleCopyContent();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    selectedPath, 
+    history, 
+    fileContent, 
+    filteredAndSortedPaths, 
+    handleCopyContent, 
+    handleVersionClick,
+    selectedForZip,
+    handleZipSelection
+  ]);
 
   if (loading) return <div>Loading history...</div>;
   if (error) return (
