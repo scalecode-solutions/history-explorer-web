@@ -186,10 +186,15 @@ function App() {
     setFileContent('');
     try {
       const response = await fetch(`${API_URL}${version.contentUrl}?basePath=${encodeURIComponent(historyPath)}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to load content: ${errorData.error}\n\nDetails: ${JSON.stringify(errorData.details, null, 2)}`);
+      }
       const content = await response.text();
       setFileContent(content);
     } catch (e) {
-      setFileContent('Error loading file content.');
+      console.error('Error loading file content:', e);
+      setFileContent(`Error loading file content:\n${e.message}`);
     } finally {
       setIsContentLoading(false);
     }

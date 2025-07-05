@@ -124,8 +124,22 @@ app.get('/api/content/:folder/:fileId', async (req, res) => {
     const content = await fs.readFile(filePath, 'utf8');
     res.send(content);
   } catch (err) {
-    console.error('Error reading file:', err);
-    res.status(404).json({ error: 'File not found' });
+    console.error('Error reading file:', {
+      error: err.message,
+      code: err.code,
+      path: filePath,
+      historyPath,
+      folder,
+      fileId
+    });
+    res.status(404).json({ 
+      error: 'File not found',
+      details: {
+        message: err.message,
+        code: err.code,
+        path: filePath
+      }
+    });
   }
 });
 
