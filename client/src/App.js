@@ -629,7 +629,7 @@ function App() {
                       value={directorySearchTerm}
                       onChange={(e) => {
                         setDirectorySearchTerm(e.target.value);
-                        setSelectedDirectory('');
+                        setIsDirectoryDropdownOpen(true);
                       }}
                       onFocus={() => setIsDirectoryDropdownOpen(true)}
                     />
@@ -662,20 +662,6 @@ function App() {
                       {isSearching ? '...' : 'Search'}
                     </button>
                   )}
-                </div>
-              </div>
-              <div className="controls-row">
-                <div className="extension-filters">
-                  {Object.entries(extensionCounts).sort(([a], [b]) => a.localeCompare(b)).map(([ext, count]) => (
-                    <label key={ext}>
-                      <input
-                        type="checkbox"
-                        checked={activeExtensions.includes(ext)}
-                        onChange={() => handleExtensionToggle(ext)}
-                      />
-                      {ext} ({count})
-                    </label>
-                  ))}
                 </div>
               </div>
             </div>
