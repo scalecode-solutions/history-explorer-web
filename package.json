@@ -1,1 +1,15 @@
-{}
+{
+  "name": "history-explorer-web",
+  "version": "1.0.0",
+  "description": "File History Explorer Web Application",
+  "scripts": {
+    "install": "cd client && npm install && cd ../server && npm install",
+    "build": "cd client && npm run build",
+    "start": "cd server && node index.js",
+    "dev": "concurrently \"cd client && npm start\" \"cd server && node index.js\"",
+    "serve": "npm run build && npm run start"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
