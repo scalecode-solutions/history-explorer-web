@@ -75,17 +75,24 @@ body {
 .versions-pane h3 {
   margin: 0;
   padding: 10px;
-  background-color: #333;
-  border-bottom: 1px solid #444;
-  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .versions-pane ul {
   list-style: none;
-  padding: 0;
   margin: 0;
+  padding: 0;
   overflow-y: auto;
-  flex-grow: 1;
+  flex: 1;
+}
+
+.versions-footer {
+  padding: 10px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-start;
+  background: var(--bg-color);
+  margin-top: auto;
 }
 
 .versions-pane li {
@@ -103,8 +110,13 @@ body {
   background-color: #595900;
 }
 
-.diff-checkbox {
-  margin-right: 10px;
+.diff-checkbox,
+.files-list input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  cursor: pointer;
+  accent-color: var(--accent-color);
 }
 
 .version-controls {

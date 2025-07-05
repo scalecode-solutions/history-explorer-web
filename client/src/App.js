@@ -271,47 +271,20 @@ function App() {
   }, []);
 
   const handleDirectorySelect = (dir) => {
+    setDirectorySearchTerm('');
     setSelectedDirectory(dir);
     setIsDirectoryDropdownOpen(false);
-    
-    // Clear any extension filters that don't exist in the new directory or its subdirectories
-    if (activeExtensions.length > 0) {
-      const validExtensions = activeExtensions.filter(ext => {
-        // If no directory selected, all extensions are valid
-        if (!dir) return true;
-        
-        // Check if this extension exists in the selected directory or its subdirectories
-        return Object.keys(history).some(path => {
-          const pathDir = path.lastIndexOf('/') > -1 ? path.substring(0, path.lastIndexOf('/')) : '(root)';
-          const pathExt = path.lastIndexOf('.') > -1 ? path.substring(path.lastIndexOf('.')) : '.none';
-          
-          return (pathDir === dir || 
-                 (dir !== '(root)' && pathDir.startsWith(dir + '/'))) && 
-                 pathExt === ext;
-        });
-      });
-      
-      setActiveExtensions(validExtensions);
-    }
   };
 
   const clearDirectoryFilter = () => {
-    setSelectedDirectory('');
     setDirectorySearchTerm('');
+    setSelectedDirectory('');
     setIsDirectoryDropdownOpen(false);
   };
 
   const filteredDirectories = Object.keys(directoryCounts)
     .filter(dir => decodeURIComponent(dir).toLowerCase().includes(directorySearchTerm.toLowerCase()))
     .sort();
-
-  const handleExtensionToggle = (extToToggle) => {
-    setActiveExtensions(prev =>
-      prev.includes(extToToggle)
-        ? prev.filter(ext => ext !== extToToggle)
-        : [...prev, extToToggle]
-    );
-  };
 
   const filteredAndSortedPaths = Object.keys(history || {})
     .filter(path => {
@@ -758,13 +731,6 @@ function App() {
           </div>
           <div className="versions-pane">
             <h3>Versions</h3>
-            {selectedPath && (
-              <div className="version-controls">
-                <button onClick={handleCompare} disabled={selectedForDiff.length !== 2}>
-                  Compare Selected ({selectedForDiff.length}/2)
-                </button>
-              </div>
-            )}
             {selectedPath && history[selectedPath] ? (
               <ul>
                 {history[selectedPath].map((version, index) => {
@@ -790,6 +756,13 @@ function App() {
             ) : (
               <div className="placeholder-text">Select a file to see its versions.</div>
             )}
+            <div className="versions-footer">
+              {selectedPath && (
+                <button onClick={handleCompare} disabled={selectedForDiff.length !== 2}>
+                  Compare Selected ({selectedForDiff.length}/2)
+                </button>
+              )}
+            </div>
           </div>
         </div>
         <div className="resizer"></div>
