@@ -24,7 +24,7 @@ const loadSession = () => {
 };
 
 function App() {
-  const [session, setSession] = useState(loadSession());
+  const [session] = useState(loadSession());
 
   const [history, setHistory] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -67,15 +67,23 @@ function App() {
       Object.keys(history).forEach(path => {
         const lastSlash = path.lastIndexOf('/');
         const dir = lastSlash > -1 ? path.substring(0, lastSlash) : '(root)';
-        dirs[dir] = (dirs[dir] || 0) + 1;
+        
+        // Check if this path is in the selected directory or its subdirectories
+        const matchesDirectory = !selectedDirectory || 
+          dir === selectedDirectory || 
+          (selectedDirectory !== '(root)' && dir.startsWith(selectedDirectory + '/'));
+        
+        if (matchesDirectory) {
+          dirs[dir] = (dirs[dir] || 0) + 1;
 
-        const lastDot = path.lastIndexOf('.');
-        const ext = lastDot > -1 ? path.substring(lastDot) : '.none';
-        exts[ext] = (exts[ext] || 0) + 1;
+          const lastDot = path.lastIndexOf('.');
+          const ext = lastDot > -1 ? path.substring(lastDot) : '.none';
+          exts[ext] = (exts[ext] || 0) + 1;
+        }
       });
     }
     return { directoryCounts: dirs, extensionCounts: exts };
-  }, [history]);
+  }, [history, selectedDirectory]);
 
   const FONT_SIZES = {
     small: '12px',
@@ -264,8 +272,27 @@ function App() {
 
   const handleDirectorySelect = (dir) => {
     setSelectedDirectory(dir);
-    setDirectorySearchTerm(decodeURIComponent(dir));
     setIsDirectoryDropdownOpen(false);
+    
+    // Clear any extension filters that don't exist in the new directory or its subdirectories
+    if (activeExtensions.length > 0) {
+      const validExtensions = activeExtensions.filter(ext => {
+        // If no directory selected, all extensions are valid
+        if (!dir) return true;
+        
+        // Check if this extension exists in the selected directory or its subdirectories
+        return Object.keys(history).some(path => {
+          const pathDir = path.lastIndexOf('/') > -1 ? path.substring(0, path.lastIndexOf('/')) : '(root)';
+          const pathExt = path.lastIndexOf('.') > -1 ? path.substring(path.lastIndexOf('.')) : '.none';
+          
+          return (pathDir === dir || 
+                 (dir !== '(root)' && pathDir.startsWith(dir + '/'))) && 
+                 pathExt === ext;
+        });
+      });
+      
+      setActiveExtensions(validExtensions);
+    }
   };
 
   const clearDirectoryFilter = () => {
