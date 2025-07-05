@@ -713,14 +713,16 @@ function App() {
                   <button
                     onClick={handleDownloadZip}
                     disabled={isZipping || selectedForZip.size === 0}
+                    className="action-button"
                   >
-                    {isZipping ? 'Zipping...' : 'Download .zip'}
+                    {isZipping ? 'Zipping...' : `Download ZIP (${selectedForZip.size})`}
                   </button>
                    <button
                     onClick={handleDirectRestore}
                     disabled={isRestoring || selectedForZip.size === 0}
+                    className="action-button"
                   >
-                    {isRestoring ? 'Restoring...' : 'Restore Files...'}
+                    {isRestoring ? 'Restoring...' : 'Restore Files'}
                   </button>
                 </div>
                 <div className="footer-info">
@@ -758,7 +760,11 @@ function App() {
             )}
             <div className="versions-footer">
               {selectedPath && (
-                <button onClick={handleCompare} disabled={selectedForDiff.length !== 2}>
+                <button 
+                  onClick={handleCompare} 
+                  disabled={selectedForDiff.length !== 2}
+                  className="action-button"
+                >
                   Compare Selected ({selectedForDiff.length}/2)
                 </button>
               )}
