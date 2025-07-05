@@ -694,6 +694,22 @@ function App() {
                     Reset View
                   </button>
                 </div>
+                <div className="extension-dropdown-container">
+                  <select 
+                    value={activeExtensions.length === 1 ? activeExtensions[0] : ''} 
+                    onChange={(e) => {
+                      const ext = e.target.value;
+                      setActiveExtensions(ext ? [ext] : []);
+                    }}
+                  >
+                    <option value="">All Extensions</option>
+                    {Object.entries(extensionCounts).map(([ext, count]) => (
+                      <option key={ext} value={ext}>
+                        {ext} ({count})
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="sort-dropdown-container">
                   <label htmlFor="sort-order">Sort by:</label>
                   <select id="sort-order" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
