@@ -173,13 +173,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding: 10px;
 }
 
 .controls-row {
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
-  gap: 15px;
+  gap: 10px;
   align-items: center;
 }
 
@@ -238,6 +238,9 @@ body {
 
 .super-search-container {
   flex-grow: 1;
+  position: relative;
+  display: flex;
+  gap: 8px;
 }
 
 .super-search-container input {
@@ -248,7 +251,6 @@ body {
   color: #f1f1f1;
   padding: 8px;
   box-sizing: border-box;
-  width: 100%;
 }
 
 .super-search-container button {
@@ -258,10 +260,6 @@ body {
   background-color: #555;
   color: #ddd;
   cursor: pointer;
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
 }
 
 .super-search-container button:disabled {
