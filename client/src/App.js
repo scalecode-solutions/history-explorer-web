@@ -44,6 +44,8 @@ function App() {
   const [selectedDirectory, setSelectedDirectory] = useState(session.selectedDirectory || '');
   const [selectedForZip, setSelectedForZip] = useState(session.selectedForZip || new Set());
   const [isZipping, setIsZipping] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [fontSize, setFontSize] = useState(session.fontSize || 'medium');
   const [copyStatus, setCopyStatus] = useState('');
   const [searchTerm, setSearchTerm] = useState(session.searchTerm || '');
@@ -137,7 +139,10 @@ function App() {
 
   useEffect(() => {
     const fetchHistory = async () => {
-      if (!historyPath) return; // Don't fetch if we don't have a path
+      if (!historyPath) {
+        setLoading(false); // Set loading to false if no path
+        return;
+      }
 
       setLoading(true);
       setError(null);
@@ -400,6 +405,50 @@ function App() {
     }
   };
 
+  const handleDirectRestore = async () => {
+    if (!window.showDirectoryPicker) {
+      alert('Your browser does not support the File System Access API. Please use a modern Chromium-based browser like Chrome or Edge.');
+      return;
+    }
+    if (selectedForZip.size === 0) return;
+
+    setIsRestoring(true);
+    try {
+      const dirHandle = await window.showDirectoryPicker();
+      
+      for (const path of selectedForZip) {
+        const latestVersion = history[path]?.[0];
+        if (latestVersion) {
+          const response = await fetch(`${API_URL}${latestVersion.contentUrl}?basePath=${encodeURIComponent(historyPath)}`);
+          if (response.ok) {
+            const content = await response.text();
+            const decodedPath = decodeURIComponent(path);
+            const relativePath = decodedPath.replace(/^(?:C:\\Users\\[^\\]+|Users\/[^/]+)/, '');
+            const pathParts = relativePath.split(/[\\/]/).filter(p => p);
+            
+            let currentHandle = dirHandle;
+            for (let i = 0; i < pathParts.length - 1; i++) {
+              currentHandle = await currentHandle.getDirectoryHandle(pathParts[i], { create: true });
+            }
+
+            const fileHandle = await currentHandle.getFileHandle(pathParts[pathParts.length - 1], { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(content);
+            await writable.close();
+          }
+        }
+      }
+      alert(`Successfully restored ${selectedForZip.size} files!`);
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        console.error("Error during direct restore:", e);
+        alert(`An error occurred during restore: ${e.message}`);
+      }
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
   const handlePathConfirmed = (path) => {
     localStorage.setItem('historyPath', path);
     setHistoryPath(path);
@@ -435,55 +484,79 @@ function App() {
     window.location.reload();
   };
 
-  if (setupStep !== 'done') {
-    return (
-      <div className="modal-overlay">
-        <div className="setup-container">
-          {isLoadingPath ? (
-            <div className="setup-card"><h2>Finding Cursor history...</h2></div>
-          ) : (
-            <div className="setup-card">
-              <button onClick={handleCloseSetup} className="close-button">&times;</button>
-              <h2>History Explorer Setup</h2>
-              {setupStep === 'confirming' && (
-                <>
-                  <h3>We found the following history folder:</h3>
-                  {foundPaths.map(p => (
-                    <div key={p}>
-                      <p className="path-display">{p}</p>
-                      <button onClick={() => handlePathConfirmed(p)}>Use this path</button>
+  const renderSetupModal = () => {
+    if (setupStep !== 'done') {
+      return (
+        <div className="modal-overlay">
+          <div className="setup-container">
+            {isLoadingPath ? (
+              <div className="setup-card"><h2>Finding Cursor history...</h2></div>
+            ) : (
+              <div className="setup-card">
+                <button onClick={handleCloseSetup} className="close-button">&times;</button>
+                <h2>History Explorer Setup</h2>
+                {setupStep === 'confirming' && (
+                  <>
+                    <h3>We found the following history folder:</h3>
+                    {foundPaths.map(p => (
+                      <div key={p}>
+                        <p className="path-display">{p}</p>
+                        <button onClick={() => handlePathConfirmed(p)}>Use this path</button>
+                      </div>
+                    ))}
+                    <hr />
+                    <button className="secondary-action" onClick={() => setSetupStep('manual')}>Enter path manually</button>
+                  </>
+                )}
+                {setupStep === 'manual' && (
+                  <>
+                    <h3>Please enter the full path to your Cursor history folder.</h3>
+                    <p>This is usually `~/.config/Cursor/User/History` on Linux or `%APPDATA%\\Cursor\\User\\History` on Windows.</p>
+                    <input
+                      type="text"
+                      value={manualPath}
+                      onChange={(e) => setManualPath(e.target.value)}
+                      placeholder="/path/to/your/Cursor/User/History"
+                    />
+                    <button onClick={handleManualPathSubmit} disabled={!manualPath}>Save and Continue</button>
+                  </>
+                )}
+                {setupStep === 'closed' && (
+                    <div className="setup-required">
+                      <h3>Setup Required</h3>
+                      <p>Please configure your history path to begin.</p>
+                      <button onClick={handleResetPath}>Start Setup</button>
                     </div>
-                  ))}
-                  <hr />
-                  <button className="secondary-action" onClick={() => setSetupStep('manual')}>Enter path manually</button>
-                </>
-              )}
-              {setupStep === 'manual' && (
-                <>
-                  <h3>Please enter the full path to your Cursor history folder.</h3>
-                  <p>This is usually `~/.config/Cursor/User/History` on Linux or `%APPDATA%\\Cursor\\User\\History` on Windows.</p>
-                  <input
-                    type="text"
-                    value={manualPath}
-                    onChange={(e) => setManualPath(e.target.value)}
-                    placeholder="/path/to/your/Cursor/User/History"
-                  />
-                  <button onClick={handleManualPathSubmit} disabled={!manualPath}>Save and Continue</button>
-                </>
-              )}
-              {setupStep === 'closed' && (
-                  <div className="setup-required">
-                    <h3>Setup Required</h3>
-                    <p>Please configure your history path to begin.</p>
-                    <button onClick={handleResetPath}>Start Setup</button>
-                  </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const renderHelpModal = () => {
+    if (!isHelpModalOpen) return null;
+
+    return (
+      <div className="modal-overlay" onClick={() => setIsHelpModalOpen(false)}>
+        <div className="setup-card help-modal" onClick={e => e.stopPropagation()}>
+          <button onClick={() => setIsHelpModalOpen(false)} className="close-button">&times;</button>
+          <h2>How to Use History Explorer</h2>
+          <div className="help-content">
+            <p><strong>1. Select Your History Folder:</strong> The app will try to find your Cursor history folder automatically. If it can't, you'll be prompted to enter the path manually.</p>
+            <p><strong>2. Browse Files:</strong> Use the left-most panel to browse and select files. You can filter the list by directory or file extension, and sort by name, date, size, or extension.</p>
+            <p><strong>3. View Versions:</strong> Once you select a file, its available history versions will appear in the "Versions" panel. Click any version to view its content in the main preview pane.</p>
+            <p><strong>4. Compare Versions (Diff):</strong> To see what changed between two versions, check the box next to two different versions and click the "Compare Selected" button that appears.</p>
+            <p><strong>5. Restore Files:</strong> Select one or more files using the checkboxes in the main file list. Then, use the buttons in the footer to either "Download .zip" or, in compatible browsers, "Restore Files..." directly to a folder on your machine.</p>
+            <p><strong>6. Super Search:</strong> Use the search bar at the top to search for text inside the content of all file versions, not just the filenames.</p>
+          </div>
         </div>
       </div>
     );
-  }
+  };
 
   if (loading) return <div>Loading history...</div>;
   if (error) return (
@@ -501,11 +574,18 @@ function App() {
 
   return (
     <div className="App">
+      {renderSetupModal()}
+      {renderHelpModal()}
       <div className="container">
         <div className="left-column">
           <div className="files-pane">
             <div className="pane-header">
-              <h2>File History Explorer</h2>
+              <div className="title-container">
+                <h2>File History Explorer</h2>
+                <button onClick={() => setIsHelpModalOpen(true)} className="help-button" title="How to use this app">
+                  ℹ️
+                </button>
+              </div>
               <div className="path-display-container">
                 <span className="current-path-label">PATH:</span>
                 <span className="current-path-text">{historyPath}</span>
@@ -574,24 +654,19 @@ function App() {
             </div>
             <div className="files-list">
               <div className="files-list-header">
-                <input
-                  type="checkbox"
-                  id="select-all"
-                  title="Select all visible files"
-                  checked={allVisibleSelected}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
-                />
-                <label htmlFor="select-all">Select all ({selectedForZip.size})</label>
-                <button
-                  onClick={handleDownloadZip}
-                  disabled={isZipping || selectedForZip.size === 0}
-                >
-                  {isZipping ? 'Zipping...' : 'Download .zip'}
-                </button>
-                <button onClick={handleResetSession} className="secondary-action">
-                  Reset View
-                </button>
-                <div className="spacer"></div>
+                <div className="selection-controls">
+                  <input
+                    type="checkbox"
+                    id="select-all"
+                    title="Select all visible files"
+                    checked={allVisibleSelected}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                  />
+                  <label htmlFor="select-all">Select all ({selectedForZip.size})</label>
+                  <button onClick={handleResetSession} className="secondary-action">
+                    Reset View
+                  </button>
+                </div>
                 <div className="sort-dropdown-container">
                   <label htmlFor="sort-order">Sort by:</label>
                   <select id="sort-order" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
@@ -631,7 +706,24 @@ function App() {
                 })}
               </div>
               <div className="files-list-footer">
-                <span>{filteredAndSortedPaths.length} files shown</span>
+                <div className="footer-actions">
+                  <span className="selected-count-label">{selectedForZip.size} files selected</span>
+                  <button
+                    onClick={handleDownloadZip}
+                    disabled={isZipping || selectedForZip.size === 0}
+                  >
+                    {isZipping ? 'Zipping...' : 'Download .zip'}
+                  </button>
+                   <button
+                    onClick={handleDirectRestore}
+                    disabled={isRestoring || selectedForZip.size === 0}
+                  >
+                    {isRestoring ? 'Restoring...' : 'Restore Files...'}
+                  </button>
+                </div>
+                <div className="footer-info">
+                  <span>{filteredAndSortedPaths.length} files shown</span>
+                </div>
               </div>
             </div>
           </div>
